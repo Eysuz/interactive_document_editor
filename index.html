@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Редактор документа</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geologica:wght,CRSV@100..900,0&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --orange: #F08627;
+      --dark: #111010;
+      --gray: #6B6B6B;
+      --light-bg: #F4F2EF;
+      --page-bg: #FAFAF8;
+      --border: #D9D7D3;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { background: #dedad4; font-family: 'Geologica', sans-serif; }
+
+    /* TOOLBAR */
+    #toolbar {
+      position: fixed; top:0; left:0; right:0; z-index:1000;
+      background:#1a1a1a; padding:9px 24px;
+      display:flex; align-items:center; justify-content:space-between;
+      box-shadow:0 2px 12px rgba(0,0,0,.35);
+    }
+    .tb-title { font-family:'Playfair Display',serif; font-size:15px; color:var(--orange); font-weight:700; }
+    .tb-hint  { font-size:10.5px; color:#888; margin-top:1px; }
+    #dl-btn {
+      background:var(--orange); color:white; border:none; padding:9px 20px;
+      border-radius:6px; font-family:'Geologica',sans-serif; font-size:13px; font-weight:600;
+      cursor:pointer; display:flex; align-items:center; gap:7px; transition:background .2s;
+    }
+    #dl-btn:hover { background:#d4731e; }
+
+    /* WRAPPER */
+    #wrapper { padding-top:62px; display:flex; flex-direction:column; align-items:center; gap:24px; padding-bottom:48px; }
+
+    /* PAGE */
+    .page {
+      width:794px; background:var(--page-bg);
+      box-shadow:0 4px 28px rgba(0,0,0,.18);
+      display:flex; flex-direction:column;
+    }
+
+    /* HEADER */
+    .ph { flex-shrink:0; height:66px; border-bottom:1px solid var(--border); position:relative; }
+    .ph img { position:absolute; left:46px; top:10px; width:93px; height:46px; object-fit:contain; }
+
+    /* FOOTER */
+    .pf {
+      flex-shrink:0; height:26px;
+      display:flex; align-items:center; justify-content:space-between; padding:0 44px 28px;
+      margin-top:auto;
+    }
+    .pf span { color:rgba(0,0,0,.22); font-size:8.5px; font-weight:300; letter-spacing:1.19px; }
+
+    /* CONTENT */
+    .pc { padding:5px 44px 10px; display:flex; flex-direction:column; gap:2px; }
+
+    /* INFO BLOCK */
+    .info-block { background:var(--light-bg); border-left:3px solid var(--orange); padding:10px 24px; display:flex; flex-direction:column; gap:4px; }
+    .ib-title { font-family:'Playfair Display',serif; font-size:21px; font-weight:700; text-transform:uppercase; line-height:1.6; color:var(--dark); }
+    .ib-row { display:flex; gap:5px; align-items:baseline; }
+    .ib-label { color:var(--orange); font-size:10.5px; font-weight:300; white-space:nowrap; }
+    .ib-val   { color:var(--gray);   font-size:10.5px; font-weight:300; flex:1; }
+    .ib-summary { color:#222; font-size:11.5px; font-weight:300; line-height:1.78; margin-top:2px; }
+
+    /* SYSTEM HEADER */
+    .sys-head { display:flex; align-items:baseline; gap:3px; }
+    .sys-num  { color:var(--orange); font-size:9px; font-weight:600; letter-spacing:1.8px; white-space:nowrap; padding-top:5px; }
+    .sys-title { font-family:'Playfair Display',serif; font-size:21px; font-weight:700; color:var(--dark); }
+
+    /* LABELS */
+    .sec-label { font-size:11.5px; font-weight:600; color:var(--dark); margin-top:2px; }
+
+    /* LIST */
+    .lst { display:flex; flex-direction:column; }
+    .lst-item { display:flex; align-items:flex-start; min-height:20px; position:relative; }
+    .lst-dash { color:var(--orange); font-size:11.5px; font-weight:600; line-height:15px; width:18px; flex-shrink:0; }
+    .lst-text { color:#222; font-size:11.5px; font-weight:300; line-height:15px; flex:1; min-width:0; }
+    .lst-ctrl { display:flex; gap:3px; align-items:center; opacity:0; transition:opacity .15s; margin-left:6px; flex-shrink:0; }
+    .lst-item:hover .lst-ctrl { opacity:1; }
+
+    /* RISK ITEMS */
+    .risk-item { display:flex; align-items:flex-start; gap:8px; padding:9px 0; border-bottom:1px solid var(--border); position:relative; }
+    .risk-item:last-of-type { border-bottom:none; }
+    .risk-num { font-family:'Playfair Display',serif; font-size:20px; font-weight:700; color:var(--border); line-height:1; width:34px; flex-shrink:0; padding-top:1px; }
+    .risk-body { flex:1; }
+    .risk-head { font-size:12.5px; font-weight:600; color:var(--dark); line-height:1.3; }
+    .risk-sub  { font-size:11.5px; font-weight:300; color:var(--gray); line-height:1.6; }
+    .risk-ctrl { display:flex; gap:3px; align-items:center; opacity:0; transition:opacity .15s; flex-shrink:0; }
+    .risk-item:hover .risk-ctrl { opacity:1; }
+
+    /* BUTTONS */
+    .cb { width:17px; height:17px; border-radius:50%; border:none; cursor:pointer; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:transform .1s; line-height:1; }
+    .cb:hover { transform:scale(1.18); }
+    .cb-add { background:#e8f5e9; color:#388e3c; }
+    .cb-rem { background:#fce4ec; color:#c62828; }
+    .add-row { opacity:0; transition:opacity .2s; margin-top:2px; }
+    .lst:hover .add-row, #risks-list:hover .add-row { opacity:1; }
+    .add-btn { background:none; border:1px dashed var(--orange); border-radius:4px; color:var(--orange); font-size:10.5px; font-family:'Geologica',sans-serif; padding:2px 10px; cursor:pointer; }
+    .add-btn:hover { background:rgba(240,134,39,.08); }
+
+    /* VYVOD */
+    .vyvod { font-size:11.5px; line-height:1.5; }
+    .vyvod b { font-weight:600; color:var(--dark); }
+    .vyvod span { font-weight:300; color:#222; }
+
+    /* EFFICIENCY */
+    .eff-row { display:flex; align-items:center; gap:6px; margin-top:1px; margin-bottom: 2px;}
+    .eff-label { font-size:11.5px; font-weight:600; color:var(--dark); }
+    .eff-val { font-family:'Playfair Display',serif; font-size:13px; font-weight:700; color:var(--dark); min-width:40px; }
+
+    /* VECTOR */
+    .vec { background:var(--light-bg); border-left:3px solid var(--orange); padding:8px 16px; }
+    .vec-title { font-size:11.5px; font-weight:600; color:var(--dark); margin-bottom:3px; }
+    .vec-text  { font-size:11.5px; font-weight:300; color:#222; line-height:1.68; }
+
+    /* DIVIDER */
+    .div { border-top:1px solid var(--border); margin:4px 0; }
+
+    /* PAGE 4 */
+    .p4-title { font-family:'Playfair Display',serif; font-size:21px; font-weight:700; text-transform:uppercase; color:var(--dark); line-height:1.6; }
+    .p4-intro { font-size:12.5px; font-weight:300; color:#222; line-height:1.65; }
+    .p4-rl    { font-size:11.5px; font-weight:600; color:var(--gray); letter-spacing:.66px; margin-top:2px; }
+
+    .what-box   { background:var(--light-bg); padding:14px 22px; display:flex; flex-direction:column; gap:5px; }
+    .what-title { font-size:11.5px; font-weight:600; color:var(--dark); }
+    .what-text  { font-size:11.5px; font-weight:300; color:#111; line-height:1.75; }
+
+    .cd-title { font-family:'Playfair Display',serif; font-size:21px; font-weight:700; text-transform:uppercase; color:var(--dark); }
+    .cd-box   { background:var(--light-bg); border-left:2px solid var(--orange); padding:12px 20px; }
+    .cd-text  { font-size:11.5px; font-weight:300; color:#222; line-height:1.78; }
+
+    .os-title { font-family:'Playfair Display',serif; font-size:21px; font-weight:700; text-transform:uppercase; color:var(--dark); }
+    .os-box   {  border-left:2px solid var(--orange); padding:10px 24px; display:flex; flex-direction:column; gap:6px; }
+    .os-quote { font-size:11.5px; font-weight:300; color:#444; line-height:1.8; }
+    .os-name  { text-align:right; font-size:16px; font-weight:600; color:var(--dark); }
+    .os-desc  { text-align:right; font-size:11.5px; font-weight:300; color:var(--gray); line-height:1.4; }
+
+    /* EDITABLE */
+    [contenteditable="true"] { border-radius:2px; outline:none; cursor:text; transition:background .12s; }
+    [contenteditable="true"]:hover { background:rgba(240,134,39,.07); }
+    [contenteditable="true"]:focus { background:rgba(240,134,39,.13); box-shadow:0 0 0 1.5px rgba(240,134,39,.4); }
+
+    /* ============================================================
+       PRINT
+    ============================================================ */
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+
+      *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      body { background: white !important; }
+      #toolbar { display:none !important; }
+
+      #wrapper {
+        display: block !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        width: 100% !important;
+        align-items: unset !important;
+      }
+
+      .page {
+        width: 210mm !important;
+        min-height: 297mm !important;
+        margin: 0 auto !important;
+        box-shadow: none !important;
+        page-break-after: always;
+        break-after: page;
+        page-break-inside: avoid;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+      .page:last-child { page-break-after: auto; break-after: auto; }
+
+      .pc { flex: 1; }
+
+      .lst-ctrl, .risk-ctrl, .add-row { display:none !important; }
+      [contenteditable] { box-shadow:none !important; background:transparent !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <div>
+    <div class="tb-title">Редактор документа</div>
+    <div class="tb-hint">Нажмите на текст чтобы редактировать · Наведите на список для кнопок + / −</div>
+  </div>
+  <button id="dl-btn" onclick="window.print()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M12 15V3M12 15l-4-4M12 15l4-4M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17"/>
+    </svg>
+    Скачать PDF
+  </button>
+</div>
+
+<div id="wrapper">
+
+<!-- ============================= PAGE 1 ============================= -->
+<div class="page">
+  <div class="ph"><img src="logo.png" alt="" onerror="this.style.visibility='hidden'"></div>
+  <div class="pc">
+
+    <div class="info-block">
+      <div class="ib-title">О вашем бизнесе</div>
+      <div class="ib-row"><span class="ib-label">Разбор бизнеса:</span><span class="ib-val" contenteditable="true">Мухаммед — продажа семейных трусов на маркетплейсах</span></div>
+      <div class="ib-row"><span class="ib-label">Ниша:</span><span class="ib-val" contenteditable="true">мужские семейные трусы, маркетплейсы</span></div>
+      <div class="ib-row"><span class="ib-label">Срок:</span><span class="ib-val" contenteditable="true">производство 2 нед., продажа ~3 нед.</span></div>
+      <div class="ib-row"><span class="ib-label">Текущий доход:</span><span class="ib-val" contenteditable="true">не раскрыт</span></div>
+      <div class="ib-row"><span class="ib-label">Команда:</span><span class="ib-val" contenteditable="true">менеджер по продажам, менеджер по логистике, бухгалтер/экономист</span></div>
+      <div class="ib-summary" contenteditable="true">Вы продаёте семейные мужские трусы через маркетплейсы, производство контрактное в Узбекистане. Небольшая команда закрывает операционку, вы ведёте закупку и стратегию. За полгода поток клиентов и прибыль упали.</div>
+    </div>
+
+    <div class="sys-head"><span class="sys-num">Система 1</span><span class="sys-title">ПРОДУКТ</span></div>
+    <div class="sec-label">Что есть:</div>
+    <div class="lst" id="l1">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Один продукт: семейные мужские трусы</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Контрактное производство в Узбекистане, цикл 2 недели</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Других продуктов, допродаж и пакетов нет</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="vyvod"><b>ВЫВОД: </b><span contenteditable="true">вы сами сказали: «семейные трусы у нас только» и «мы продаём плюс-минус одно и то же». Один товар без вариантов — это ставка на удачу: любое движение рынка бьёт сразу по всему бизнесу.</span></div>
+
+    <div class="sec-label">Теряете деньги на:</div>
+    <div class="lst" id="l2">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Один SKU → нечем поднимать средний чек</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Нет допродаж → каждый клиент покупает один раз и на минимальную сумму</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="eff-row"><span class="eff-label">Текущая оценка эффективности системы:</span><span class="eff-val" contenteditable="true">20%</span></div>
+    <div class="vec"><div class="vec-title">Вектор развития</div><div class="vec-text" contenteditable="true">Добавить к базовым трусам несколько вариантов по цене и наборы. Это может дать +25–40% к выручке за 3 месяца за счёт роста среднего чека на тех же покупателях.</div></div>
+
+    <div class="div"></div>
+
+    <div class="sys-head"><span class="sys-num">Система 2</span><span class="sys-title">КЛИЕНТ</span></div>
+    <div class="sec-label">Что есть:</div>
+    <div class="lst" id="l3">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Основной покупатель: женщина 35–45 лет, средний доход, покупает для мужа или отца (60%)</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Мужчины, покупающие для себя — около 40%</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Основная география: Центральный федеральный округ</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="vyvod"><b>ВЫВОД: </b><span contenteditable="true">вы хорошо знаете, кто покупает, но на вопрос «почему именно к нам нужно прийти?» ответили: «это я не знаю». Клиент есть, но он случайный: вы не управляете ни его выбором, ни его возвратом.</span></div>
+
+    <div class="sec-label">Теряете деньги на:</div>
+    <div class="lst" id="l4">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Неизвестна стоимость клиента → реклама работает вслепую</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Нет сегментации женщин и мужчин → разные мотивы, один подход</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="eff-row"><span class="eff-label">Текущая оценка эффективности системы:</span><span class="eff-val" contenteditable="true">25%</span></div>
+    <div class="vec"><div class="vec-title">Вектор развития</div><div class="vec-text" contenteditable="true">Понять, за что вас выбирают женщины и мужчины отдельно, и под это подстроить карточку и рекламу. Это способ поднять конверсию на 15–25% и прибыль на горизонте 2–3 месяцев.</div></div>
+
+  </div>
+  <div class="pf"><span>Бизнес пА/Новому · Авторский консалтинг</span><span>svpanov.ru</span></div>
+</div>
+
+<!-- ============================= PAGE 2 ============================= -->
+<div class="page">
+  <div class="ph"><img src="logo.png" alt="" onerror="this.style.visibility='hidden'"></div>
+  <div class="pc">
+
+    <div class="sys-head"><span class="sys-num">Система 3</span><span class="sys-title">ПОЗИЦИОНИРОВАНИЕ</span></div>
+    <div class="sec-label">Что есть:</div>
+    <div class="lst" id="l5">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Хорошие отзывы и рейтинги на маркетплейсах</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Продукт в среднем ценовом сегменте</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Вы говорите: «особенно отличающей черты нету»</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="vyvod"><b>ВЫВОД: </b><span contenteditable="true">когда вас спросили, чем вы отличаетесь, прозвучало: «мы продаём плюс-минус одно и то же» и «особенно отличающей черты нету». Без ответа «почему вы» клиент просто выбирает по цене и позиции в выдаче.</span></div>
+    <div class="sec-label">Теряете деньги на:</div>
+    <div class="lst" id="l6">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Нет УТП → вы воюете только ценой и местом в списке</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Отзывы и рейтинг не упакованы в понятное преимущество</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="eff-row"><span class="eff-label">Текущая оценка эффективности системы:</span><span class="eff-val" contenteditable="true">15%</span></div>
+    <div class="vec"><div class="vec-title">Вектор развития</div><div class="vec-text" contenteditable="true">Сформулировать простое отличие именно ваших трусов и вынести его в первые строки карточки. Это даёт шанс поднять цену без потери конверсии и увеличить маржу на 20–30% за 4–6 месяцев.</div></div>
+
+    <div class="div"></div>
+
+    <div class="sys-head"><span class="sys-num">Система 4</span><span class="sys-title">ТРАФИК</span></div>
+    <div class="sec-label">Что есть:</div>
+    <div class="lst" id="l7">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Единственный канал: маркетплейсы</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Реклама только внутри маркетплейсов</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Реклама и комиссии — одна из главных статей расходов</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="vyvod"><b>ВЫВОД: </b><span contenteditable="true">вы сами сказали: «большая часть денег у меня уходит на маркетплейсы» и «много денег уходит на рекламу». При этом поток клиентов снизился. Один канал, который дорожает и даёт всё меньше — это лотерея, а не система.</span></div>
+    <div class="sec-label">Теряете деньги на:</div>
+    <div class="lst" id="l8">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Полная зависимость от одного канала → любое изменение правил бьёт по обороту</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Стоимость заявки и клиента не считается → невозможно понять, окупается ли реклама</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="eff-row"><span class="eff-label">Текущая оценка эффективности системы:</span><span class="eff-val" contenteditable="true">20%</span></div>
+    <div class="vec"><div class="vec-title">Вектор развития</div><div class="vec-text" contenteditable="true">Считать, сколько стоит каждый заказ с рекламы, и параллельно искать хотя бы один внешний источник трафика. Это может снизить нагрузку на рекламный бюджет на 20–30% за 4–6 месяцев.</div></div>
+
+  </div>
+  <div class="pf"><span>Бизнес пА/Новому · Авторский консалтинг</span><span>svpanov.ru</span></div>
+</div>
+
+<!-- ============================= PAGE 3 ============================= -->
+<div class="page">
+  <div class="ph"><img src="logo.png" alt="" onerror="this.style.visibility='hidden'"></div>
+  <div class="pc">
+
+    <div class="sys-head"><span class="sys-num">Система 5</span><span class="sys-title">ПРОДАЖИ</span></div>
+    <div class="sec-label">Что есть:</div>
+    <div class="lst" id="l9">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Заказы поступают через маркетплейс</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Команда обрабатывает заказы без общения с клиентом</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Воронки, CRM и переписок с клиентами нет</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="vyvod"><b>ВЫВОД: </b><span contenteditable="true">на вопрос про средний чек вы ответили: «мы не влияем. К сожалению». Продажи у вас происходят сами — нажал человек кнопку или нет. Клиент купил один раз и исчез, а вы снова платите за нового.</span></div>
+    <div class="sec-label">Теряете деньги на:</div>
+    <div class="lst" id="l10">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Нет влияния на средний чек → каждый клиент оставляет минимум</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Нет повторных продаж → база покупателей не работает, всё уходит в привлечение новых</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="eff-row"><span class="eff-label">Текущая оценка эффективности системы:</span><span class="eff-val" contenteditable="true">15%</span></div>
+    <div class="vec"><div class="vec-title">Вектор развития</div><div class="vec-text" contenteditable="true">Упаковать товар в наборы и связки внутри маркетплейса, чтобы один заказ был выгоднее одиночной покупки. Это даёт +15–25% к обороту за 3 месяца без роста бюджета на рекламу.</div></div>
+
+    <div class="div"></div>
+
+    <div class="sys-head"><span class="sys-num">Система 6</span><span class="sys-title">ФИНАНСЫ</span></div>
+    <div class="sec-label">Что есть:</div>
+    <div class="lst" id="l11">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Вы отслеживаете финансы через аналитические программы</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Есть бухгалтер/экономист</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Основные расходы: комиссии маркетплейсов, логистика, реклама, аренда, зарплаты</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="vyvod"><b>ВЫВОД: </b><span contenteditable="true">вы говорите: «не хватает лишних денег… для приумножения капитала». При этом, кроме финансовых показателей, других метрик вы не смотрите. Вы видите итог по деньгам, но не видите, где именно они утекают.</span></div>
+    <div class="sec-label">Теряете деньги на:</div>
+    <div class="lst" id="l12">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Нет стоимости клиента и заказа → нельзя понять, какие вложения окупаются</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Нет управленческих метрик по продукту и каналу → слабые места остаются незамеченными</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="eff-row"><span class="eff-label">Текущая оценка эффективности системы:</span><span class="eff-val" contenteditable="true">30%</span></div>
+    <div class="vec"><div class="vec-title">Вектор развития</div><div class="vec-text" contenteditable="true">Добавить к текущему учёту пару простых метрик — стоимость клиента, маржа по товару, доля рекламы в выручке. Это может освободить 10–20% денег за 2–3 месяца за счёт обрезки лишних расходов.</div></div>
+
+    <div class="div"></div>
+
+    <div class="sys-head"><span class="sys-num">Система 7</span><span class="sys-title">УПРАВЛЕНИЕ</span></div>
+    <div class="sec-label">Что есть:</div>
+    <div class="lst" id="l13">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Вы занимаетесь закупкой товара</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Вы занимаетесь стратегическим управлением</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">В команде: менеджер по продажам, менеджер по логистике</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Регламентов и стандартов управления нет</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="vyvod"><b>ВЫВОД: </b><span contenteditable="true">вы сами сказали: «я занимаюсь закупкой товара и стратегическим управлением компании». Всё ключевое завязано на вас. Это стеклянный потолок: стоит вам заболеть или просто устать — бизнес резко замедлится.</span></div>
+    <div class="sec-label">Теряете деньги на:</div>
+    <div class="lst" id="l14">
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Всё держится на вас → нет роста без вашего личного участия</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="lst-item"><span class="lst-dash">—</span><span class="lst-text" contenteditable="true">Нет регламентов → одни и те же задачи и ошибки проживаются снова и снова</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div></div>
+      <div class="add-row"><button class="add-btn" onclick="addToList(this)">+ добавить пункт</button></div>
+    </div>
+    <div class="eff-row"><span class="eff-label">Текущая оценка эффективности системы:</span><span class="eff-val" contenteditable="true">25%</span></div>
+    <div class="vec"><div class="vec-title">Вектор развития</div><div class="vec-text" contenteditable="true">Описать базовые процессы и закрепить, кто за что отвечает, чтобы операционка шла без вашего постоянного вмешательства. Это освободит вам до 30–40% времени за 4–6 месяцев для задач роста.</div></div>
+
+  </div>
+  <div class="pf"><span>Бизнес пА/Новому · Авторский консалтинг</span><span>svpanov.ru</span></div>
+</div>
+
+<!-- ============================= PAGE 4 ============================= -->
+<div class="page">
+  <div class="ph"><img src="logo.png" alt="" onerror="this.style.visibility='hidden'"></div>
+  <div class="pc" style="gap:5px;">
+
+    <div class="p4-title">ИТОГОВАЯ КАРТИНА</div>
+    <div class="p4-intro" contenteditable="true">У вас живой бизнес: понятный продукт, покупатели, команда, финучёт. Это не ноль, и это нормально для предпринимателей — по-другому редко бывает в начале. Но один продукт, один канал, отсутствие уникальности и падение прибыли в 2026 делают модель уязвимой.</div>
+    <div class="p4-rl">Вот основные зоны риска:</div>
+
+    <div id="risks-list">
+      <div class="risk-item"><span class="risk-num">01</span><div class="risk-body"><div class="risk-head" contenteditable="true">Зависимость от маркетплейсов</div><div class="risk-sub" contenteditable="true">Любое изменение комиссий, логистики или правил сразу бьёт по обороту.</div></div><div class="risk-ctrl"><button class="cb cb-add" onclick="addRisk(this)">+</button><button class="cb cb-rem" onclick="remRisk(this)">−</button></div></div>
+      <div class="risk-item"><span class="risk-num">02</span><div class="risk-body"><div class="risk-head" contenteditable="true">Отсутствие уникальности</div><div class="risk-sub" contenteditable="true">Без ответа «почему вы» клиент просто выбирает по цене и позиции.</div></div><div class="risk-ctrl"><button class="cb cb-add" onclick="addRisk(this)">+</button><button class="cb cb-rem" onclick="remRisk(this)">−</button></div></div>
+      <div class="risk-item"><span class="risk-num">03</span><div class="risk-body"><div class="risk-head" contenteditable="true">Нет инструмента роста выручки</div><div class="risk-sub" contenteditable="true">Средний чек и повторные покупки никак не прокачаны — рост только через новых клиентов.</div></div><div class="risk-ctrl"><button class="cb cb-add" onclick="addRisk(this)">+</button><button class="cb cb-rem" onclick="remRisk(this)">−</button></div></div>
+      <div class="risk-item" style="border-bottom:none"><span class="risk-num">04</span><div class="risk-body"><div class="risk-head" contenteditable="true">Нехватка оборотки при туманных метриках</div><div class="risk-sub" contenteditable="true">Вы чувствуете «не хватает денег», но не видите, где именно они сгорают.</div></div><div class="risk-ctrl"><button class="cb cb-add" onclick="addRisk(this)">+</button><button class="cb cb-rem" onclick="remRisk(this)">−</button></div></div>
+      <div class="add-row" style="margin-top:4px;"><button class="add-btn" onclick="addRiskToList()">+ добавить риск</button></div>
+    </div>
+
+    <div class="what-box">
+      <div class="what-title" contenteditable="true">Что может произойти за 3–6 месяцев в 2026 году, если ничего не менять</div>
+      <div class="what-text" contenteditable="true">В 2026 году покупательский спрос падает и предпринимателей зажимают со всех сторон. Комиссии и реклама на маркетплейсах дорожают, конкуренты демпингуют, а у вас один товар и нет отличия. Маржа будет сжиматься, и вы всё чаще будете докладывать деньги в бизнес, не получая ощутимого роста.</div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="cd-title">Что дальше</div>
+    <div class="cd-box">
+      <div class="cd-text" contenteditable="true">
+        <li>Сейчас сильнее всего проседают продукт, позиционирование и продажи — три системы, через которые каждый день уходят живые деньги. Пока они такие, любой дополнительный рекламный бюджет просто размажется по дыркам.</li>
+        <li>Ориентир на 6 месяцев — выйти на доход, при котором не нужно постоянно докладывать свои деньги и есть запас на развитие, а не только на выживание.</li>
+        <li>Мы можем помочь вам перестроить фундамент: продуктовую линейку, отличие от конкурентов и механику продаж так, чтобы один и тот же клиент приносил больше и возвращался сам.</li></div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="os-title">От себя лично</div>
+    <div class="os-box">
+      <div class="os-quote" contenteditable="true">" Мухаммед, независимо от того, какой шаг вы сделаете дальше, желаю вам выдержки и спокойной головы в это непростое время. Пусть ваши партии уходят быстро, покупатели возвращаются, а оборотных денег всегда хватает с запасом. "</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;margin-top:4px;">
+        <div class="os-name" contenteditable="true">Семён Панов</div>
+        <div class="os-desc" contenteditable="true">Серийный предприниматель. Практик. Основатель авторского консалтингового агентства — «Бизнес пА-новому»</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="pf"><span>Бизнес пА/Новому · Авторский консалтинг</span><span>svpanov.ru</span></div>
+</div>
+
+</div>
+
+<script>
+function mk(text) {
+  const d = document.createElement('div');
+  d.className = 'lst-item';
+  d.innerHTML = `<span class="lst-dash">—</span><span class="lst-text" contenteditable="true">${text}</span><div class="lst-ctrl"><button class="cb cb-add" onclick="addItem(this)">+</button><button class="cb cb-rem" onclick="remItem(this)">−</button></div>`;
+  return d;
+}
+function addItem(btn) {
+  const item = btn.closest('.lst-item');
+  const ni = mk('Новый пункт');
+  item.after(ni);
+  focus(ni.querySelector('.lst-text'));
+}
+function remItem(btn) {
+  const item = btn.closest('.lst-item');
+  const lst = item.closest('.lst');
+  if (lst.querySelectorAll('.lst-item').length <= 1) return;
+  item.remove();
+}
+function addToList(btn) {
+  const lst = btn.closest('.lst');
+  const ar = lst.querySelector('.add-row');
+  const ni = mk('Новый пункт');
+  lst.insertBefore(ni, ar);
+  focus(ni.querySelector('.lst-text'));
+}
+function mkRisk() {
+  const d = document.createElement('div');
+  d.className = 'risk-item';
+  d.innerHTML = `<span class="risk-num">00</span><div class="risk-body"><div class="risk-head" contenteditable="true">Новый риск</div><div class="risk-sub" contenteditable="true">Описание</div></div><div class="risk-ctrl"><button class="cb cb-add" onclick="addRisk(this)">+</button><button class="cb cb-rem" onclick="remRisk(this)">−</button></div>`;
+  return d;
+}
+function addRisk(btn) {
+  const item = btn.closest('.risk-item');
+  const ni = mkRisk();
+  item.after(ni);
+  renum();
+  focus(ni.querySelector('.risk-head'));
+}
+function remRisk(btn) {
+  const item = btn.closest('.risk-item');
+  if (document.querySelectorAll('#risks-list .risk-item').length <= 1) return;
+  item.remove();
+  renum();
+}
+function addRiskToList() {
+  const list = document.getElementById('risks-list');
+  const ar = list.querySelector('.add-row');
+  const ni = mkRisk();
+  list.insertBefore(ni, ar);
+  renum();
+  focus(ni.querySelector('.risk-head'));
+}
+function renum() {
+  const all = document.querySelectorAll('#risks-list .risk-item');
+  all.forEach((r, i) => {
+    r.querySelector('.risk-num').textContent = String(i+1).padStart(2,'0');
+    r.style.borderBottom = i < all.length-1 ? '1px solid var(--border)' : 'none';
+  });
+}
+function focus(el) {
+  el.focus();
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  const s = window.getSelection();
+  s.removeAllRanges();
+  s.addRange(r);
+}
+</script>
+</body>
+</html>
